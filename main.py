@@ -26,9 +26,16 @@ class Task(BaseModel):
     description: str | None = None
     completed: bool = False
 
+
 class TaskCreate(BaseModel):
     title: str
     description: str | None = None
+
+
+class TaskUpdate(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    completed: bool | None = None
 
 # -----------------------------
 # Root Endpoint
@@ -56,7 +63,7 @@ def get_stats():
     total = len(tasks)
     completed = sum(1 for t in tasks if t["completed"])
     pending = total - completed
-    percentage = round(completed / total * 100, 2) if total > 0 else 0
+    percentage = round((completed / total) * 100, 2) if total > 0 else 0
     return {
         "total": total,
         "completed": completed,
@@ -74,7 +81,10 @@ def get_task(task_id: int):
     for task in tasks:
         if task["id"] == task_id:
             return task
-    raise HTTPException(status_code=404, detail=f"Task {task_id} not found — by Hamed Werteni")
+    raise HTTPException(
+        status_code=404,
+        detail=f"Task {task_id} not found — by Hamed Werteni"
+    )
 
 # -----------------------------
 # Create Task
@@ -93,18 +103,30 @@ def create_task(task: TaskCreate):
     return new_task
 
 # -----------------------------
-# Update Task
+# Update Task (Partial Update Supported)
 # -----------------------------
 @app.put("/tasks/{task_id}")
-def update_task(task_id: int, updated_task: TaskCreate):
+def update_task(task_id: int, updated_task: TaskUpdate):
     tasks = load_tasks()
     for task in tasks:
         if task["id"] == task_id:
-            task["title"] = updated_task.title
-            task["description"] = updated_task.description
+
+            if updated_task.title is not None:
+                task["title"] = updated_task.title
+
+            if updated_task.description is not None:
+                task["description"] = updated_task.description
+
+            if updated_task.completed is not None:
+                task["completed"] = updated_task.completed
+
             save_tasks(tasks)
             return task
-    raise HTTPException(status_code=404, detail=f"Task {task_id} not found — by Hamed Werteni")
+
+    raise HTTPException(
+        status_code=404,
+        detail=f"Task {task_id} not found — by Hamed Werteni"
+    )
 
 # -----------------------------
 # Delete Single Task
@@ -113,10 +135,15 @@ def update_task(task_id: int, updated_task: TaskCreate):
 def delete_task(task_id: int):
     tasks = load_tasks()
     new_tasks = [task for task in tasks if task["id"] != task_id]
+
     if len(new_tasks) == len(tasks):
-        raise HTTPException(status_code=404, detail=f"Task {task_id} not found — by Hamed Werteni")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Task {task_id} not found — by Hamed Werteni"
+        )
+
     save_tasks(new_tasks)
-    return {"detail": f"Task {task_id} deleted — by Hamed Werteni"}
+    return
 
 # -----------------------------
 # Delete All Tasks
@@ -124,4 +151,4 @@ def delete_task(task_id: int):
 @app.delete("/tasks", status_code=204)
 def delete_all_tasks():
     save_tasks([])
-    return {"detail": "All tasks deleted — by Hamed Werteni"}
+    return
